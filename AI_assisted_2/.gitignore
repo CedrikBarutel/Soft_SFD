@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.dump
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
