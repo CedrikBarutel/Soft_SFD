@@ -1,0 +1,57 @@
+# Brownian diffusion with constant longitudinal forcing.
+# Velocity should be measured from mean displacement, not raw MSD.
+
+variable Number equal ${N}
+variable gamma equal ${temp}/${diffusion_coef}
+variable Fx equal ${gamma}*${walk_velocity}
+variable timestep_value equal ${timestep}
+variable runsteps_value equal ${runsteps}
+variable dumpfreq_value equal ${dumpfreq}
+variable width equal ${width_factor}*${sigma}
+variable ljcut equal 1.12246*${sigma}
+variable ylo equal -0.5*${width}
+variable yhi equal 0.5*${width}
+
+units lj
+atom_style atomic
+dimension 2
+boundary p f p
+
+region box block 0 ${length} ${ylo} ${yhi} -0.5 0.5
+create_box 1 box
+
+variable dx equal ${length}/${Number}
+variable i loop ${Number}
+label create_loop
+variable xpos equal (${i}-0.5)*${dx}
+create_atoms 1 single ${xpos} 0.0 0.0
+next i
+jump SELF create_loop
+
+mass 1 1.0
+timestep ${timestep_value}
+
+pair_style lj/cut ${ljcut}
+pair_modify shift yes
+pair_coeff 1 1 1 ${sigma} ${ljcut}
+
+neighbor 0.5 bin
+neigh_modify delay 0 every 5 check yes
+atom_modify sort 0 0.0
+
+fix brownian all brownian ${temp} ${seed} gamma_t ${gamma}
+fix push all addforce ${Fx} 0.0 0.0
+fix walls all wall/reflect ylo ${ylo} yhi ${yhi}
+
+log ${logfile_name}
+thermo ${dumpfreq_value}
+thermo_style custom step temp pe v_runsteps_value
+thermo_modify flush yes
+
+dump traj all custom ${dumpfreq_value} ${dumpfile_1} id type xu yu zu
+dump_modify traj flush yes sort id
+
+if "${write_movie} > 0" then "dump mov all movie ${moviefreq} ${moviefile_1} type type zoom 1.5 box yes 0.1"
+if "${write_movie} > 0" then "dump_modify mov adiam 1 ${sigma}"
+
+run ${runsteps_value}
